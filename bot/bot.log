@@ -79,3 +79,10 @@
 2026-02-24 12:24:04 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
 2026-02-24 12:24:04 | INFO     | __main__:on_shutdown:141 - Bot stopped
 2026-02-24 12:24:04 | INFO     | __main__:run:188 - Bot stopped
+2026-02-24 12:25:39 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-24 12:25:39 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-24 12:25:39 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-24 12:25:39 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-24 12:25:40 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-24 12:25:40 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-24 12:25:40 | INFO     | __main__:on_startup:130 - Bot is ready!
