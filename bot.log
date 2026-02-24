@@ -1,0 +1,6 @@
+2026-02-24 11:31:06 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-24 11:31:06 | INFO     | __main__:create_bot:51 - Starting Telegram PC Controller Bot...
+2026-02-24 11:31:06 | ERROR    | __main__:create_bot:93 - Failed to create bot: Passing `parse_mode`, `disable_web_page_preview` or `protect_content` to Bot initializer is not supported anymore. These arguments have been removed in 3.7.0 version. Use `default=DefaultBotProperties(parse_mode='HTML')` argument instead.
+2026-02-24 11:32:32 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-24 11:32:32 | INFO     | __main__:create_bot:53 - Starting Telegram PC Controller Bot...
+2026-02-24 11:32:32 | ERROR    | __main__:create_bot:95 - Failed to create bot: 'Dispatcher' object has no attribute 'filters_factory'
