@@ -86,3 +86,159 @@
 2026-02-24 12:25:40 | INFO     | __main__:on_startup:125 - Database initialized
 2026-02-24 12:25:40 | INFO     | __main__:setup_commands:115 - Bot commands configured
 2026-02-24 12:25:40 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-25 22:39:16 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-25 22:39:16 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-25 22:39:16 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-25 22:39:16 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-25 22:39:29 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-25 22:39:29 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-25 22:39:29 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-25 22:39:29 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-25 22:39:29 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-25 22:39:29 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-25 22:39:29 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-25 22:39:37 | INFO     | handlers.authorization:cmd_start:57 - User 1094318782 started the bot
+2026-02-25 22:41:44 | INFO     | services.pc_manager:execute_command:168 - Command executed: shutdown /a
+2026-02-25 22:41:50 | ERROR    | services.dota_monitor:_make_request:92 - API request failed: 403
+2026-02-25 22:41:50 | ERROR    | services.dota_monitor:_make_request:92 - API request failed: 403
+2026-02-26 13:35:48 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 13:35:48 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 13:35:48 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 13:35:48 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 13:35:48 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 13:35:48 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 13:35:48 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 13:36:17 | ERROR    | services.dota_monitor:_make_request:92 - API request failed: 403
+2026-02-26 13:36:17 | ERROR    | services.dota_monitor:_make_request:92 - API request failed: 403
+2026-02-26 14:25:33 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:25:33 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:25:36 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:25:36 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:25:36 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:25:36 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:25:37 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:25:37 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:25:37 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:25:40 | ERROR    | services.dota_monitor:_make_request:117 - API request failed: 403 Forbidden (attempt 1/3)
+2026-02-26 14:25:42 | ERROR    | services.dota_monitor:_make_request:117 - API request failed: 403 Forbidden (attempt 2/3)
+2026-02-26 14:25:47 | ERROR    | services.dota_monitor:_make_request:117 - API request failed: 403 Forbidden (attempt 3/3)
+2026-02-26 14:25:47 | ERROR    | handlers.dota:cmd_dota:80 - Dota status error: 403 Forbidden: Invalid or expired API key
+2026-02-26 14:25:57 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:25:57 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:36:12 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:36:12 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:36:12 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:36:12 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:36:12 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:36:13 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:36:13 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:36:18 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 1/3)
+2026-02-26 14:36:20 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 2/3)
+2026-02-26 14:36:24 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 3/3)
+2026-02-26 14:36:24 | WARNING  | services.dota_monitor:get_player_summary:206 - Steam API auth error, falling back to OpenDota: 403 Forbidden: Invalid or expired API key
+2026-02-26 14:36:25 | WARNING  | services.dota_monitor:get_player_summary_opendota:189 - OpenDota API request failed: 404
+2026-02-26 14:36:25 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 1/3)
+2026-02-26 14:36:27 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 2/3)
+2026-02-26 14:36:32 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 3/3)
+2026-02-26 14:36:32 | WARNING  | services.dota_monitor:get_match_history:280 - Steam API auth error, falling back to OpenDota: 403 Forbidden: Invalid or expired API key
+2026-02-26 14:36:32 | WARNING  | services.dota_monitor:get_match_history_opendota:256 - OpenDota match history failed: 404
+2026-02-26 14:38:45 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:38:45 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:41:18 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:41:18 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:41:18 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:41:18 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:41:18 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:41:18 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:41:18 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:42:04 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 1/3)
+2026-02-26 14:42:07 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 2/3)
+2026-02-26 14:42:11 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 3/3)
+2026-02-26 14:42:11 | WARNING  | services.dota_monitor:get_player_summary:209 - Steam API auth error, falling back to OpenDota: 403 Forbidden: Invalid or expired API key
+2026-02-26 14:42:11 | WARNING  | services.dota_monitor:get_player_summary_opendota:192 - OpenDota API request failed: 404
+2026-02-26 14:42:12 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 1/3)
+2026-02-26 14:42:14 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 2/3)
+2026-02-26 14:42:18 | ERROR    | services.dota_monitor:_make_request:138 - API request failed: 403 Forbidden (attempt 3/3)
+2026-02-26 14:42:18 | WARNING  | services.dota_monitor:get_match_history:286 - Steam API auth error, falling back to OpenDota: 403 Forbidden: Invalid or expired API key
+2026-02-26 14:42:18 | WARNING  | services.dota_monitor:get_match_history_opendota:262 - OpenDota match history failed: 404
+2026-02-26 14:44:13 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:44:13 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:44:17 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:44:17 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:44:17 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:44:17 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:44:17 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:44:17 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:44:17 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:44:46 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:44:46 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:44:50 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:44:50 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:44:50 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:44:50 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:44:50 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:44:50 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:44:50 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:46:44 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:46:44 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:49:50 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:49:50 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:49:50 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:49:50 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:49:50 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:49:51 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:49:51 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:49:54 | WARNING  | services.dota_monitor:get_player_summary_opendota:192 - OpenDota API request failed: 404
+2026-02-26 14:49:55 | WARNING  | services.dota_monitor:get_match_history_opendota:267 - OpenDota match history failed: 404
+2026-02-26 14:50:56 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:50:56 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:51:00 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:51:00 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:51:00 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:51:00 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:51:00 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:51:00 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:51:00 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:51:04 | WARNING  | services.dota_monitor:get_player_summary_opendota:192 - OpenDota API request failed: 404
+2026-02-26 14:51:04 | WARNING  | services.dota_monitor:get_match_history_opendota:267 - OpenDota match history failed: 404
+2026-02-26 14:51:48 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:51:48 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:53:11 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:53:11 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:53:11 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:53:11 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:53:11 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:53:11 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:53:11 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:53:15 | WARNING  | services.dota_monitor:get_player_summary_opendota:192 - OpenDota API request failed: 404
+2026-02-26 14:53:16 | WARNING  | services.dota_monitor:get_match_history_opendota:267 - OpenDota match history failed: 404
+2026-02-26 14:54:31 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:54:31 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 14:57:07 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 14:57:07 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 14:57:07 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 14:57:07 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 14:57:07 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 14:57:08 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 14:57:08 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 14:58:54 | INFO     | services.wol:wake:95 - Wake-on-LAN attempt 1/3
+2026-02-26 14:58:54 | INFO     | services.wol:send_magic_packet:73 - Magic packet sent to 28::E:E::52::0:0: via 192.168.0.255:9
+2026-02-26 14:59:24 | WARNING  | services.wol:verify_wake:171 - PC at 192.168.0.104 did not come online within 30s
+2026-02-26 14:59:58 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 14:59:58 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 15:00:25 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 15:00:25 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 15:00:25 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 15:00:25 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 15:00:25 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 15:00:25 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 15:00:25 | INFO     | __main__:on_startup:130 - Bot is ready!
+2026-02-26 15:01:03 | INFO     | __main__:on_shutdown:135 - Bot shutting down...
+2026-02-26 15:01:03 | INFO     | __main__:on_shutdown:141 - Bot stopped
+2026-02-26 17:45:37 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-02-26 17:45:37 | INFO     | __main__:create_bot:52 - Starting Telegram PC Controller Bot...
+2026-02-26 17:45:37 | INFO     | __main__:create_bot:82 - Bot configured successfully
+2026-02-26 17:45:37 | INFO     | __main__:on_startup:120 - Bot starting up...
+2026-02-26 17:45:37 | INFO     | __main__:on_startup:125 - Database initialized
+2026-02-26 17:45:37 | INFO     | __main__:setup_commands:115 - Bot commands configured
+2026-02-26 17:45:37 | INFO     | __main__:on_startup:130 - Bot is ready!

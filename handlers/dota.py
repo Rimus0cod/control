@@ -34,6 +34,22 @@ async def cmd_dota(message: Message, bot: Bot):
         dota_monitor = DotaMonitor()
         status = await dota_monitor.get_player_status()
         
+        # Check if we got valid data
+        if not status.get("player_name"):
+            await message.answer(
+                "⚠️ Unable to retrieve Dota 2 data.\n\n"
+                "Possible causes:\n"
+                "• Steam API key is invalid or expired\n"
+                "• Your Dota 2 match history is private\n"
+                "• Account not found in OpenDota database\n\n"
+                "To fix:\n"
+                "1. Update your Steam API key in .env\n"
+                "2. Make your Dota 2 match history public\n"
+                "3. Play some public matches first",
+                reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin)
+            )
+            return
+        
         # Build response
         online_status = "🟢 Online" if status.get("online") else "⚪ Offline"
         in_game_status = "🎮 In Game" if status.get("in_game") else "🏠 Not in game"
@@ -112,7 +128,16 @@ async def cmd_dota_history(message: Message, bot: Bot):
         matches = await dota_monitor.get_match_history(5)
         
         if not matches:
-            await message.answer("No recent matches found.")
+            await message.answer(
+                "⚠️ No match history found.\n\n"
+                "Possible causes:\n"
+                "• Steam API key is invalid or expired\n"
+                "• Your Dota 2 match history is private\n"
+                "• Account not found in OpenDota database\n\n"
+                "To fix:\n"
+                "1. Update your Steam API key in .env\n"
+                "2. Make your Dota 2 match history public"
+            )
             return
         
         text = "<b>🎮 Recent Matches</b>\n\n"
