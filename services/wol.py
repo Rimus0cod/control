@@ -110,63 +110,56 @@ class WakeOnLanService:
     @staticmethod
     async def check_port_open(
         host: str,
-        port: int = 3389,
-        timeout: float = 3.0
+        port: int = 22,
+        timeout: float = 3.0,
     ) -> bool:
         """
-        Check if a port is open on the target host.
-        
-        Args:
-            host: Target IP address
-            port: Port to check (default 3389 for RDP)
-            timeout: Connection timeout
-            
-        Returns:
-            True if port is open
+        Check if a TCP port is open on the target host.
+
+        Default port is 22 (SSH) — standard on Linux.
+        For Windows RDP use port 3389.
         """
+        loop = asyncio.get_event_loop()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setblocking(False)
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(timeout)
-            
-            loop = asyncio.get_event_loop()
-            result = await loop.sock_connect(sock, (host, port))
-            
-            sock.close()
+            await asyncio.wait_for(
+                loop.sock_connect(sock, (host, port)),
+                timeout=timeout,
+            )
             return True
-            
-        except (socket.timeout, ConnectionRefusedError, OSError):
+        except Exception:
             return False
-    
+        finally:
+            try:
+                sock.close()
+            except Exception:
+                pass
+
     async def verify_wake(
         self,
         target_ip: Optional[str] = None,
-        port: int = 3389,
-        timeout: float = 30.0
+        port: int = 22,
+        timeout: float = 60.0,
     ) -> bool:
         """
-        Verify that PC has woken up after sending magic packet.
-        
-        Args:
-            target_ip: Target IP to check
-            port: Port to check
-            timeout: Maximum time to wait
-            
-        Returns:
-            True if PC is reachable
+        Poll until the PC responds on `port` or `timeout` is reached.
+
+        Uses SSH port 22 by default (Linux). Increase timeout to 60s
+        because modern PCs with NVMe still need ~30s to POST + boot.
         """
         settings = get_settings()
         target_ip = target_ip or settings.pc_ip_address
-        
+
         check_interval = 2.0
         elapsed = 0.0
-        
+
         while elapsed < timeout:
             if await self.check_port_open(target_ip, port):
-                logger.info(f"PC at {target_ip} is online")
+                logger.info(f"PC at {target_ip}:{port} is online (elapsed {elapsed:.0f}s)")
                 return True
-            
             await asyncio.sleep(check_interval)
             elapsed += check_interval
-        
+
         logger.warning(f"PC at {target_ip} did not come online within {timeout}s")
         return False

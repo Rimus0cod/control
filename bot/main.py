@@ -27,6 +27,7 @@ from handlers import (
     wol_router,
     dota_router,
     notification_router,
+    voice_router,
 )
 from utils import setup_logging
 
@@ -78,6 +79,7 @@ def create_bot() -> tuple[Bot, Dispatcher]:
         _dp.include_router(pc_router)
         _dp.include_router(dota_router)
         _dp.include_router(notification_router)
+        _dp.include_router(voice_router)  # voice commands via Whisper
         
         logger.info("Bot configured successfully")
         
@@ -100,15 +102,21 @@ def get_bot() -> Bot:
 async def setup_commands(bot: Bot):
     """Setup bot commands menu."""
     commands = [
-        BotCommand(command="start", description="Start the bot"),
-        BotCommand(command="help", description="Show help"),
-        BotCommand(command="wake", description="Wake up PC (WoL)"),
-        BotCommand(command="status", description="Check PC status"),
-        BotCommand(command="reboot", description="Reboot PC"),
-        BotCommand(command="shutdown", description="Shutdown PC"),
-        BotCommand(command="cmd", description="Execute command"),
-        BotCommand(command="dota", description="Dota 2 status"),
-        BotCommand(command="notify", description="Toggle notifications"),
+        BotCommand(command="start", description="Запустить бота"),
+        BotCommand(command="help", description="Справка"),
+        BotCommand(command="wake", description="Включить ПК (WoL)"),
+        BotCommand(command="status", description="Статус ПК (CPU/RAM/диск)"),
+        BotCommand(command="screenshot", description="Скриншот рабочего стола"),
+        BotCommand(command="reboot", description="Перезагрузить ПК"),
+        BotCommand(command="shutdown", description="Выключить ПК"),
+        BotCommand(command="cancel", description="Отменить выключение"),
+        BotCommand(command="processes", description="Список процессов"),
+        BotCommand(command="cmd", description="Выполнить команду"),
+        BotCommand(command="dota", description="Статус Dota 2"),
+        BotCommand(command="dotahistory", description="История матчей Dota 2"),
+        BotCommand(command="dotalive", description="Live матч (реал-тайм)"),
+        BotCommand(command="dotabuffs", description="Баффы игроков в матче"),
+        BotCommand(command="notify", description="Уведомления вкл/выкл"),
     ]
     
     await bot.set_my_commands(commands)
@@ -170,6 +178,7 @@ async def main():
                 "callback_query",
                 "edited_message",
                 "channel_post",
+                "voice",   # voice messages for Whisper recognition
             ],
         )
     except (KeyboardInterrupt, SystemExit):

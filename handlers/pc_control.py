@@ -1,314 +1,396 @@
-"""PC control handlers."""
-from aiogram import Router, F, Bot
+"""PC control handlers — Arch Linux."""
+
+from __future__ import annotations
+
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import BufferedInputFile, CallbackQuery, Message
 
 from bot.filters import IsAuthorized
-from bot.keyboards import get_main_keyboard, get_pc_commands_keyboard, get_confirm_keyboard
+from bot.keyboards import (
+    get_confirm_keyboard,
+    get_main_keyboard,
+    get_pc_commands_keyboard,
+)
 from database import DatabaseRepository
-from services import PCManager, NotificationService
+from services import NotificationService, PCManager
 from utils import get_logger
 
 router = Router()
 logger = get_logger(__name__)
 
+# Non-admin safe command whitelist
+SAFE_CMDS = ["ls", "pwd", "whoami", "hostname", "uname", "df", "free", "uptime", "ps", "ip"]
 
-@router.message(Command("reboot"))
-async def cmd_reboot(message: Message, bot: Bot):
-    """Handle /reboot command."""
+
+# ---------------------------------------------------------------------------
+# /status  — system metrics
+# ---------------------------------------------------------------------------
+
+@router.message(Command("status"))
+async def cmd_status(message: Message, bot: Bot) -> None:
     db = DatabaseRepository()
-    
-    # Check authorization
     user = await db.get_user_by_telegram_id(message.from_user.id)
-    
+
     if not user or not user.is_authorized:
         await message.answer(
-            "❌ You are not authorized to use this command.",
-            reply_markup=get_main_keyboard(is_authorized=False)
+            "Нет доступа.",
+            reply_markup=get_main_keyboard(is_authorized=False),
         )
         return
-    
-    # Confirm action
+
+    pc = PCManager()
+    info = await pc.get_system_info()
+
+    if not info:
+        await message.answer("Не удалось получить информацию о системе.")
+        return
+
+    text = (
+        "<b>Статус ПК</b>\n\n"
+        f"Хост: <code>{info.get('hostname', '?')}</code>\n"
+        f"CPU: <b>{info.get('cpu_percent')}%</b>\n"
+        f"RAM: <b>{info.get('memory_used_gb')} / {info.get('memory_total_gb')} ГБ</b> "
+        f"({info.get('memory_percent')}%)\n"
+        f"Диск: <b>{info.get('disk_used_gb')} / {info.get('disk_total_gb')} ГБ</b> "
+        f"({info.get('disk_percent')}%)\n"
+        f"Uptime: <b>{info.get('uptime')}</b>"
+    )
     await message.answer(
-        "⚠️ <b>Confirm Reboot</b>\n\n"
-        "This will restart the PC in 60 seconds.\n"
-        "Use /cancel to abort.",
+        text,
+        parse_mode="HTML",
+        reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin),
+    )
+    await db.add_log_entry(action="status_check", user_id=user.id)
+
+
+# ---------------------------------------------------------------------------
+# /screenshot
+# ---------------------------------------------------------------------------
+
+@router.message(Command("screenshot"))
+async def cmd_screenshot(message: Message, bot: Bot) -> None:
+    db = DatabaseRepository()
+    user = await db.get_user_by_telegram_id(message.from_user.id)
+
+    if not user or not user.is_authorized:
+        await message.answer("Нет доступа.", reply_markup=get_main_keyboard(is_authorized=False))
+        return
+
+    wait_msg = await message.answer("Делаю скриншот…")
+    pc = PCManager()
+    data = await pc.take_screenshot()
+
+    await wait_msg.delete()
+
+    if data:
+        photo = BufferedInputFile(data, filename="screenshot.png")
+        await message.answer_photo(
+            photo,
+            caption="Скриншот рабочего стола",
+            reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin),
+        )
+        await db.add_log_entry(action="screenshot_taken", user_id=user.id)
+    else:
+        await message.answer(
+            "Не удалось сделать скриншот.\n"
+            "Установите: <code>pacman -S scrot</code> или <code>pacman -S imagemagick</code>",
+            parse_mode="HTML",
+        )
+
+
+# ---------------------------------------------------------------------------
+# /reboot / /shutdown
+# ---------------------------------------------------------------------------
+
+@router.message(Command("reboot"))
+async def cmd_reboot(message: Message, bot: Bot) -> None:
+    db = DatabaseRepository()
+    user = await db.get_user_by_telegram_id(message.from_user.id)
+
+    if not user or not user.is_authorized:
+        await message.answer("Нет доступа.", reply_markup=get_main_keyboard(is_authorized=False))
+        return
+
+    await message.answer(
+        "<b>Подтвердите перезагрузку</b>\n\nПК перезагрузится через 1 минуту.\nОтменить: /cancel",
         reply_markup=get_confirm_keyboard("reboot"),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
 @router.message(Command("shutdown"))
-async def cmd_shutdown(message: Message, bot: Bot):
-    """Handle /shutdown command."""
+async def cmd_shutdown(message: Message, bot: Bot) -> None:
     db = DatabaseRepository()
-    
-    # Check authorization
     user = await db.get_user_by_telegram_id(message.from_user.id)
-    
+
     if not user or not user.is_authorized:
-        await message.answer(
-            "❌ You are not authorized to use this command.",
-            reply_markup=get_main_keyboard(is_authorized=False)
-        )
+        await message.answer("Нет доступа.", reply_markup=get_main_keyboard(is_authorized=False))
         return
-    
-    # Confirm action
+
     await message.answer(
-        "⚠️ <b>Confirm Shutdown</b>\n\n"
-        "This will shut down the PC in 60 seconds.\n"
-        "Use /cancel to abort.",
+        "<b>Подтвердите выключение</b>\n\nПК выключится через 1 минуту.\nОтменить: /cancel",
         reply_markup=get_confirm_keyboard("shutdown"),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
-@router.message(Command("cancel"))
-async def cmd_cancel(message: Message, bot: Bot):
-    """Handle /cancel command to abort shutdown/reboot."""
-    db = DatabaseRepository()
-    
-    # Check authorization
-    user = await db.get_user_by_telegram_id(message.from_user.id)
-    
-    if not user or not user.is_authorized:
-        await message.answer(
-            "❌ You are not authorized to use this command.",
-            reply_markup=get_main_keyboard(is_authorized=False)
-        )
-        return
-    
-    try:
-        pc_manager = PCManager()
-        success = await pc_manager.cancel_shutdown()
-        
-        if success:
-            await message.answer(
-                "✅ Shutdown cancelled!",
-                reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin)
-            )
-            
-            # Log action
-            await db.add_log_entry(
-                action="shutdown_cancelled",
-                user_id=user.id,
-            )
-        else:
-            await message.answer(
-                "❌ Failed to cancel shutdown.",
-                reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin)
-            )
-            
-    except Exception as e:
-        logger.error(f"Cancel shutdown error: {e}")
-        await message.answer(f"❌ Error: {str(e)}")
+# ---------------------------------------------------------------------------
+# /cancel — abort scheduled shutdown/reboot
+# ---------------------------------------------------------------------------
 
+@router.message(Command("cancel"))
+async def cmd_cancel(message: Message, bot: Bot) -> None:
+    db = DatabaseRepository()
+    user = await db.get_user_by_telegram_id(message.from_user.id)
+
+    if not user or not user.is_authorized:
+        await message.answer("Нет доступа.", reply_markup=get_main_keyboard(is_authorized=False))
+        return
+
+    pc = PCManager()
+    ok = await pc.cancel_shutdown()
+
+    await message.answer(
+        "Выключение/перезагрузка отменены." if ok else "Нечего отменять или ошибка.",
+        reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin),
+    )
+    if ok:
+        await db.add_log_entry(action="shutdown_cancelled", user_id=user.id)
+
+
+# ---------------------------------------------------------------------------
+# /cmd — execute shell command
+# ---------------------------------------------------------------------------
 
 @router.message(Command("cmd"))
-async def cmd_command(message: Message, bot: Bot):
-    """Handle /cmd command to execute arbitrary commands."""
+async def cmd_command(message: Message, bot: Bot) -> None:
     db = DatabaseRepository()
-    
-    # Check authorization
     user = await db.get_user_by_telegram_id(message.from_user.id)
-    
+
     if not user or not user.is_authorized:
-        await message.answer(
-            "❌ You are not authorized to use this command.",
-            reply_markup=get_main_keyboard(is_authorized=False)
-        )
+        await message.answer("Нет доступа.", reply_markup=get_main_keyboard(is_authorized=False))
         return
-    
-    # Get command from message
-    command = message.text.replace("/cmd", "").strip()
-    
+
+    command = (message.text or "").replace("/cmd", "", 1).strip()
     if not command:
         await message.answer(
-            "Usage: /cmd <command>\n\n"
-            "Example: /cmd dir"
+            "Использование: /cmd &lt;команда&gt;\n\n"
+            f"Доступно без прав: {', '.join(SAFE_CMDS)}",
+            parse_mode="HTML",
         )
         return
-    
-    # Only allow safe commands for non-admin
-    safe_commands = ["dir", "ipconfig", "hostname", "tasklist", "systeminfo"]
-    
-    if not user.is_admin and not any(command.lower().startswith(safe) for safe in safe_commands):
-        await message.answer(
-            "❌ This command is not allowed.\n"
-            "Available commands: " + ", ".join(safe_commands)
-        )
-        return
-    
-    await message.answer(f"🔄 Executing: <code>{command}</code>", parse_mode="HTML")
-    
-    try:
-        pc_manager = PCManager()
-        result = await pc_manager.execute_command(command)
-        
-        output = result.get("stdout", "") or result.get("stderr", "") or "No output"
-        
-        if result.get("success"):
-            await message.answer(
-                f"✅ <b>Command executed successfully</b>\n\n"
-                f"<pre>{output[:4000]}</pre>",
-                parse_mode="HTML"
-            )
-            
-            # Log action
-            await db.add_log_entry(
-                action="command_executed",
-                user_id=user.id,
-                details=f"Command: {command}",
-            )
-        else:
-            await message.answer(
-                f"❌ <b>Command failed</b>\n\n"
-                f"<pre>{output[:4000]}</pre>",
-                parse_mode="HTML"
-            )
-            
-    except Exception as e:
-        logger.error(f"Command execution error: {e}")
-        await message.answer(f"❌ Error: {str(e)}")
 
+    # For non-admins restrict to safe list
+    allowed = None if user.is_admin else SAFE_CMDS
+
+    await message.answer(f"Выполняю: <code>{command}</code>", parse_mode="HTML")
+
+    pc = PCManager()
+    result = await pc.execute_command(command, allowed_commands=allowed)
+
+    output = result.get("output") or result.get("error") or "Нет вывода"
+    icon = "✅" if result.get("success") else "❌"
+
+    await message.answer(
+        f"{icon} <pre>{output[:4000]}</pre>",
+        parse_mode="HTML",
+    )
+    await db.add_log_entry(
+        action="command_executed",
+        user_id=user.id,
+        details=f"cmd: {command!r}",
+    )
+
+
+# ---------------------------------------------------------------------------
+# /processes — top processes by RAM
+# ---------------------------------------------------------------------------
 
 @router.message(Command("processes"))
-async def cmd_processes(message: Message, bot: Bot):
-    """Handle /processes command."""
+async def cmd_processes(message: Message, bot: Bot) -> None:
     db = DatabaseRepository()
-    
-    # Check authorization
     user = await db.get_user_by_telegram_id(message.from_user.id)
-    
+
     if not user or not user.is_authorized:
-        await message.answer(
-            "❌ You are not authorized to use this command.",
-            reply_markup=get_main_keyboard(is_authorized=False)
-        )
+        await message.answer("Нет доступа.", reply_markup=get_main_keyboard(is_authorized=False))
         return
-    
-    await message.answer("📋 Loading processes...")
-    
-    try:
-        pc_manager = PCManager()
-        processes = await pc_manager.get_running_processes(limit=15)
-        
-        if processes:
-            text = "<b>Top Processes</b>\n\n"
-            
-            for proc in processes:
-                name = proc.get("name", "Unknown")
-                cpu = proc.get("cpu_percent", 0)
-                mem = proc.get("memory_percent", 0)
-                text += f"• {name} | CPU: {cpu}% | MEM: {mem}%\n"
-            
-            await message.answer(text, parse_mode="HTML")
-        else:
-            await message.answer("No processes found.")
-            
-    except Exception as e:
-        logger.error(f"Process list error: {e}")
-        await message.answer(f"❌ Error: {str(e)}")
+
+    pc = PCManager()
+    procs = await pc.get_running_processes(limit=15)
+
+    if not procs:
+        await message.answer("Список процессов недоступен.")
+        return
+
+    lines = ["<b>Топ процессов (по RAM)</b>\n"]
+    for i, p in enumerate(procs, 1):
+        name = p.get("name", "?")
+        mem = p.get("memory_percent") or 0
+        cpu = p.get("cpu_percent") or 0
+        lines.append(f"{i}. <code>{name}</code> | RAM: {mem:.1f}% | CPU: {cpu:.1f}%")
+
+    await message.answer("\n".join(lines), parse_mode="HTML")
 
 
-# Callback handlers
+# ---------------------------------------------------------------------------
+# Callbacks: pc_commands menu
+# ---------------------------------------------------------------------------
+
 @router.callback_query(F.data == "pc_commands", IsAuthorized())
-async def callback_pc_commands(callback: CallbackQuery, bot: Bot):
-    """Handle PC commands menu."""
+async def callback_pc_commands(callback: CallbackQuery, bot: Bot) -> None:
     await callback.message.answer(
-        "🖥 <b>PC Commands</b>",
+        "Управление ПК:",
         reply_markup=get_pc_commands_keyboard(),
-        parse_mode="HTML"
     )
     await callback.answer()
 
 
+@router.callback_query(F.data == "pc_status", IsAuthorized())
+async def callback_pc_status(callback: CallbackQuery, bot: Bot) -> None:
+    db = DatabaseRepository()
+    user = await db.get_user_by_telegram_id(callback.from_user.id)
+    if not user:
+        await callback.answer("Нет доступа.", show_alert=True)
+        return
+    pc = PCManager()
+    info = await pc.get_system_info()
+
+    if info:
+        text = (
+            "<b>Статус ПК</b>\n\n"
+            f"CPU: {info.get('cpu_percent')}%\n"
+            f"RAM: {info.get('memory_used_gb')}/{info.get('memory_total_gb')} ГБ "
+            f"({info.get('memory_percent')}%)\n"
+            f"Диск: {info.get('disk_used_gb')}/{info.get('disk_total_gb')} ГБ\n"
+            f"Uptime: {info.get('uptime')}"
+        )
+    else:
+        text = "Не удалось получить данные."
+
+    await callback.message.answer(text, parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "pc_screenshot", IsAuthorized())
+async def callback_pc_screenshot(callback: CallbackQuery, bot: Bot) -> None:
+    db = DatabaseRepository()
+    user = await db.get_user_by_telegram_id(callback.from_user.id)
+    if not user:
+        await callback.answer("Нет доступа.", show_alert=True)
+        return
+
+    await callback.message.answer("Делаю скриншот…")
+    pc = PCManager()
+    data = await pc.take_screenshot()
+
+    if data:
+        photo = BufferedInputFile(data, filename="screenshot.png")
+        await callback.message.answer_photo(photo, caption="Скриншот рабочего стола")
+        await db.add_log_entry(action="screenshot_taken", user_id=user.id)
+    else:
+        await callback.message.answer("Не удалось сделать скриншот. Установите scrot.")
+    await callback.answer()
+
+
 @router.callback_query(F.data == "pc_reboot", IsAuthorized())
-async def callback_pc_reboot(callback: CallbackQuery, bot: Bot):
-    """Handle reboot button."""
+async def callback_pc_reboot(callback: CallbackQuery, bot: Bot) -> None:
     await callback.message.answer(
-        "Use /reboot command to reboot the PC.",
+        "<b>Подтвердите перезагрузку</b>",
+        reply_markup=get_confirm_keyboard("reboot"),
+        parse_mode="HTML",
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == "pc_shutdown", IsAuthorized())
-async def callback_pc_shutdown(callback: CallbackQuery, bot: Bot):
-    """Handle shutdown button."""
+async def callback_pc_shutdown(callback: CallbackQuery, bot: Bot) -> None:
     await callback.message.answer(
-        "Use /shutdown command to shut down the PC.",
+        "<b>Подтвердите выключение</b>",
+        reply_markup=get_confirm_keyboard("shutdown"),
+        parse_mode="HTML",
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == "pc_cancel", IsAuthorized())
-async def callback_pc_cancel(callback: CallbackQuery, bot: Bot):
-    """Handle cancel button."""
+async def callback_pc_cancel(callback: CallbackQuery, bot: Bot) -> None:
+    pc = PCManager()
+    ok = await pc.cancel_shutdown()
     await callback.message.answer(
-        "Use /cancel command to abort shutdown/reboot.",
+        "Отменено." if ok else "Нечего отменять."
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == "pc_processes", IsAuthorized())
-async def callback_pc_processes(callback: CallbackQuery, bot: Bot):
-    """Handle processes button."""
-    await callback.message.answer(
-        "Use /processes command to see running processes.",
-    )
+async def callback_pc_processes(callback: CallbackQuery, bot: Bot) -> None:
+    pc = PCManager()
+    procs = await pc.get_running_processes(limit=10)
+
+    if procs:
+        lines = ["<b>Топ процессов</b>\n"]
+        for p in procs:
+            lines.append(
+                f"• {p.get('name', '?')} | "
+                f"RAM: {(p.get('memory_percent') or 0):.1f}% | "
+                f"CPU: {(p.get('cpu_percent') or 0):.1f}%"
+            )
+        await callback.message.answer("\n".join(lines), parse_mode="HTML")
+    else:
+        await callback.message.answer("Список процессов недоступен.")
     await callback.answer()
 
+
+# ---------------------------------------------------------------------------
+# Confirm / cancel actions
+# ---------------------------------------------------------------------------
 
 @router.callback_query(F.data.startswith("confirm_"), IsAuthorized())
-async def callback_confirm_action(callback: CallbackQuery, bot: Bot):
-    """Handle confirmation buttons."""
-    action = callback.data.replace("confirm_", "")
-    
+async def callback_confirm(callback: CallbackQuery, bot: Bot) -> None:
+    action = (callback.data or "").replace("confirm_", "")
     db = DatabaseRepository()
     user = await db.get_user_by_telegram_id(callback.from_user.id)
-    
-    try:
-        pc_manager = PCManager()
-        
-        if action == "reboot":
-            success = await pc_manager.reboot()
-            action_text = "reboot"
-        elif action == "shutdown":
-            success = await pc_manager.shutdown()
-            action_text = "shutdown"
-        else:
-            await callback.answer("Unknown action", show_alert=True)
-            return
-        
-        if success:
-            await callback.message.answer(
-                f"✅ PC will {action_text} in 60 seconds.",
-                reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin)
-            )
-            
-            # Log action
-            await db.add_log_entry(
-                action=f"{action_text}_initiated",
-                user_id=user.id,
-            )
-        else:
-            await callback.message.answer(
-                f"❌ Failed to initiate {action_text}.",
-                reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin)
-            )
-            
-    except Exception as e:
-        logger.error(f"Confirm action error: {e}")
-        await callback.message.answer(f"❌ Error: {str(e)}")
-    
+    if not user:
+        await callback.answer("Нет доступа.", show_alert=True)
+        return
+    pc = PCManager()
+    notif = NotificationService()
+
+    if action == "reboot":
+        ok = await pc.reboot(delay_minutes=1)
+        label = "перезагрузку"
+    elif action == "shutdown":
+        ok = await pc.shutdown(delay_minutes=1)
+        label = "выключение"
+    else:
+        await callback.answer("Неизвестное действие.", show_alert=True)
+        return
+
+    if ok:
+        await callback.message.answer(
+            f"ПК запланирован на {label} через 1 минуту.",
+            reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin),
+        )
+        await db.add_log_entry(action=f"{action}_initiated", user_id=user.id)
+        await notif.notify_all_users(
+            f"ПК запланирован на {label} пользователем "
+            f"@{callback.from_user.username or str(user.id)}."
+        )
+    else:
+        await callback.message.answer(
+            f"Не удалось выполнить {label}. Убедитесь, что бот запущен с правами sudo.",
+            reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin),
+        )
     await callback.answer()
+
+
 
 
 @router.callback_query(F.data == "cancel_action")
-async def callback_cancel_action(callback: CallbackQuery, bot: Bot):
-    """Handle cancel action button."""
+async def callback_cancel_action(callback: CallbackQuery, bot: Bot) -> None:
     await callback.message.answer(
-        "❌ Action cancelled.",
-        reply_markup=get_main_keyboard(is_authorized=True)
+        "Действие отменено.",
+        reply_markup=get_main_keyboard(is_authorized=True),
     )
     await callback.answer()
