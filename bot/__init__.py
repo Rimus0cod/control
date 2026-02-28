@@ -1,12 +1,14 @@
-"""Bot package initialization."""
-from .main import create_bot, get_bot
-from .bot_config import BotConfig
-from .keyboards import get_main_keyboard, get_admin_keyboard
+"""Services package."""
+from .wol import WakeOnLanService
+from .pc_manager import PCManager
+from .dota_monitor import DotaMonitor
+from .notifications import NotificationService
+from .voice_handler import VoiceCommandService
 
 __all__ = [
-    "create_bot",
-    "get_bot",
-    "BotConfig",
-    "get_main_keyboard",
-    "get_admin_keyboard",
+    "WakeOnLanService",
+    "PCManager",
+    "DotaMonitor",
+    "NotificationService",
+    "VoiceCommandService",
 ]
