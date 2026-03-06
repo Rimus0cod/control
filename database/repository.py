@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import selectinload
 
 from config import get_settings
-from database.models import Base, User, AuthRequest, PCStatus, DotaMatch, LogEntry
+from database.models import Base, User, AuthRequest, PCStatus, DotaMatch, LogEntry, UserProfile
 
 
 class DatabaseRepository:
@@ -35,10 +35,11 @@ class DatabaseRepository:
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     
-    async def get_session(self) -> AsyncSession:
+    async def get_session(self):
         """Get async database session."""
-        async with self.async_session_maker() as session:
-            yield session
+        return self.async_session_maker()
+    
+    # User methods
     
     # User methods
     async def create_user(
@@ -47,15 +48,19 @@ class DatabaseRepository:
         username: Optional[str] = None,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
+        password: Optional[str] = None,
     ) -> User:
-        """Create a new user."""
+        """Create new user."""
         async with self.async_session_maker() as session:
             user = User(
                 telegram_id=telegram_id,
                 username=username,
                 first_name=first_name,
                 last_name=last_name,
+                is_2fa_enabled=False,
             )
+            if password:
+                user.set_password(password)
             session.add(user)
             await session.commit()
             await session.refresh(user)
@@ -82,6 +87,50 @@ class DatabaseRepository:
         async with self.async_session_maker() as session:
             result = await session.execute(
                 select(User).where(User.is_authorized == True)
+            )
+            return list(result.scalars().all())
+    
+    async def update_user_password(self, user_id: int, password: str) -> bool:
+        """Update user password."""
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            return False
+        user.set_password(password)
+        return await self.update_user(user)
+    
+    async def check_user_password(self, telegram_id: int, password: str) -> bool:
+        """Check user password."""
+        user = await self.get_user_by_telegram_id(telegram_id)
+        if not user or not user.password_hash:
+            return False
+        return user.check_password(password)
+    
+    async def get_all_users(self) -> List[User]:
+        """Get all users."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(User).order_by(User.created_at.desc())
+            )
+            return list(result.scalars().all())
+    
+    async def get_user_logs(self, user_id: int) -> List[LogEntry]:
+        """Get logs for specific user."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(LogEntry)
+                .where(LogEntry.user_id == user_id)
+                .order_by(LogEntry.created_at.desc())
+                .limit(50)
+            )
+            return list(result.scalars().all())
+    
+    async def get_recent_logs(self, limit: int = 50) -> List[LogEntry]:
+        """Get recent logs."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(LogEntry)
+                .order_by(LogEntry.created_at.desc())
+                .limit(limit)
             )
             return list(result.scalars().all())
     
@@ -238,6 +287,211 @@ class DatabaseRepository:
             )
             return list(result.scalars().all())
     
+    async def close(self) -> None:
+        """Close database connection."""
+        await self.engine.dispose()
+        
+            # UserProfile methods
+    async def get_user_profile(self, user_id: int) -> Optional[UserProfile]:
+        """Get profile by internal user ID."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            return result.scalar_one_or_none()
+
+    async def get_user_profile_by_telegram_id(self, telegram_id: int) -> Optional[UserProfile]:
+        """Get profile by Telegram user ID (joins through users table)."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile)
+                .join(User, User.id == UserProfile.user_id)
+                .where(User.telegram_id == telegram_id)
+            )
+            return result.scalar_one_or_none()
+
+    async def upsert_user_profile(
+        self,
+        user_id: int,
+        **fields,
+    ) -> UserProfile:
+        """
+        Create or update user profile.
+
+        Pass only the fields you want to set/update as keyword arguments.
+        Unknown fields are silently ignored to avoid SQLAlchemy errors.
+        """
+        allowed = {
+            "pc_mac_address", "pc_ip_address", "pc_broadcast_address",
+            "pc_username", "pc_password", "pc_domain",
+            "dota2_steam_api_key", "dota2_account_id",
+        }
+        clean = {k: v for k, v in fields.items() if k in allowed}
+
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            profile = result.scalar_one_or_none()
+
+            if profile is None:
+                profile = UserProfile(user_id=user_id, **clean)
+                session.add(profile)
+            else:
+                for key, value in clean.items():
+                    setattr(profile, key, value)
+
+            await session.commit()
+            await session.refresh(profile)
+            return profile
+
+    async def delete_user_profile(self, user_id: int) -> bool:
+        """Delete user profile. Returns True if deleted."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            profile = result.scalar_one_or_none()
+            if profile:
+                await session.delete(profile)
+                await session.commit()
+                return True
+            return False
+
+    # UserProfile methods
+    async def get_user_profile(self, user_id: int) -> Optional[UserProfile]:
+        """Get profile by internal user ID."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            return result.scalar_one_or_none()
+
+    async def get_user_profile_by_telegram_id(self, telegram_id: int) -> Optional[UserProfile]:
+        """Get profile by Telegram user ID (joins through users table)."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile)
+                .join(User, User.id == UserProfile.user_id)
+                .where(User.telegram_id == telegram_id)
+            )
+            return result.scalar_one_or_none()
+
+    async def upsert_user_profile(
+        self,
+        user_id: int,
+        **fields,
+    ) -> UserProfile:
+        """
+        Create or update user profile.
+
+        Pass only the fields you want to set/update as keyword arguments.
+        Unknown fields are silently ignored to avoid SQLAlchemy errors.
+        """
+        allowed = {
+            "pc_mac_address", "pc_ip_address", "pc_broadcast_address",
+            "pc_username", "pc_password", "pc_domain",
+            "dota2_steam_api_key", "dota2_account_id",
+        }
+        clean = {k: v for k, v in fields.items() if k in allowed}
+
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            profile = result.scalar_one_or_none()
+
+            if profile is None:
+                profile = UserProfile(user_id=user_id, **clean)
+                session.add(profile)
+            else:
+                for key, value in clean.items():
+                    setattr(profile, key, value)
+
+            await session.commit()
+            await session.refresh(profile)
+            return profile
+
+    async def delete_user_profile(self, user_id: int) -> bool:
+        """Delete user profile. Returns True if deleted."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            profile = result.scalar_one_or_none()
+            if profile:
+                await session.delete(profile)
+                await session.commit()
+                return True
+            return False
+
+        # UserProfile methods
+    async def get_user_profile(self, user_id: int) -> Optional[UserProfile]:
+        """Get profile by internal user ID."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            return result.scalar_one_or_none()
+
+    async def get_user_profile_by_telegram_id(self, telegram_id: int) -> Optional[UserProfile]:
+        """Get profile by Telegram user ID (joins through users table)."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile)
+                .join(User, User.id == UserProfile.user_id)
+                .where(User.telegram_id == telegram_id)
+            )
+            return result.scalar_one_or_none()
+
+    async def upsert_user_profile(
+        self,
+        user_id: int,
+        **fields,
+    ) -> UserProfile:
+        """
+        Create or update user profile.
+
+        Pass only the fields you want to set/update as keyword arguments.
+        Unknown fields are silently ignored to avoid SQLAlchemy errors.
+        """
+        allowed = {
+            "pc_mac_address", "pc_ip_address", "pc_broadcast_address",
+            "pc_username", "pc_password", "pc_domain",
+            "dota2_steam_api_key", "dota2_account_id",
+        }
+        clean = {k: v for k, v in fields.items() if k in allowed}
+
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            profile = result.scalar_one_or_none()
+
+            if profile is None:
+                profile = UserProfile(user_id=user_id, **clean)
+                session.add(profile)
+            else:
+                for key, value in clean.items():
+                    setattr(profile, key, value)
+
+            await session.commit()
+            await session.refresh(profile)
+            return profile
+
+    async def delete_user_profile(self, user_id: int) -> bool:
+        """Delete user profile. Returns True if deleted."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            profile = result.scalar_one_or_none()
+            if profile:
+                await session.delete(profile)
+                await session.commit()
+                return True
+            return False
+
     async def close(self) -> None:
         """Close database connection."""
         await self.engine.dispose()

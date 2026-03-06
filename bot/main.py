@@ -28,6 +28,7 @@ from handlers import (
     dota_router,
     notification_router,
     voice_router,
+    profile_router,
 )
 from utils import setup_logging
 
@@ -79,8 +80,8 @@ def create_bot() -> tuple[Bot, Dispatcher]:
         _dp.include_router(pc_router)
         _dp.include_router(dota_router)
         _dp.include_router(notification_router)
-        _dp.include_router(voice_router)  # voice commands via Whisper
-        
+        _dp.include_router(voice_router)    # voice commands via Whisper
+        _dp.include_router(profile_router)  # user profile / registration
         logger.info("Bot configured successfully")
         
         return _bot, _dp
@@ -117,6 +118,9 @@ async def setup_commands(bot: Bot):
         BotCommand(command="dotalive", description="Live матч (реал-тайм)"),
         BotCommand(command="dotabuffs", description="Баффы игроков в матче"),
         BotCommand(command="notify", description="Уведомления вкл/выкл"),
+        BotCommand(command="notify", description="Уведомления вкл/выкл"),
+        BotCommand(command="profile", description="Мой профиль (настройки ПК / Steam)"),
+        BotCommand(command="setprofile", description="Заполнить / изменить профиль"),
     ]
     
     await bot.set_my_commands(commands)
