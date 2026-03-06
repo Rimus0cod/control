@@ -17,6 +17,7 @@ def get_main_keyboard(
         builder.add(InlineKeyboardButton(text="Управление ПК", callback_data="pc_commands"))
         builder.add(InlineKeyboardButton(text="Dota 2", callback_data="dota_status"))
         builder.add(InlineKeyboardButton(text="Уведомления", callback_data="toggle_notifications"))
+        builder.add(InlineKeyboardButton(text="Мой профиль", callback_data="show_profile"))
 
         if is_admin:
             builder.add(InlineKeyboardButton(text="Запросы доступа", callback_data="admin_auth"))
