@@ -22,9 +22,16 @@ pydantic-settings==2.1.0
 wakeonlan==3.1.0
 
 # ──────────────────────────────────────────────
-# System monitoring (Linux)
+# System monitoring (Cross-platform)
 # ──────────────────────────────────────────────
 psutil==5.9.6
+
+# ──────────────────────────────────────────────
+# Screenshot (Cross-platform)
+# ──────────────────────────────────────────────
+mss==9.0.1
+pyautogui==0.9.54
+Pillow==10.1.0
 
 # ──────────────────────────────────────────────
 # HTTP / API
@@ -34,7 +41,7 @@ requests==2.31.0
 
 # ──────────────────────────────────────────────
 # Voice recognition (local Whisper)
-#   System dep: pacman -S ffmpeg
+#   System dep: pacman -S ffmpeg (Linux) / pip install (Windows)
 # ──────────────────────────────────────────────
 openai-whisper
 

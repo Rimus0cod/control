@@ -54,14 +54,18 @@ def get_auth_keyboard(user_id: int) -> InlineKeyboardMarkup:
 def get_pc_commands_keyboard() -> InlineKeyboardMarkup:
     """PC control submenu."""
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="Перезагрузка", callback_data="pc_reboot"))
-    builder.add(InlineKeyboardButton(text="Выключение", callback_data="pc_shutdown"))
-    builder.add(InlineKeyboardButton(text="Отменить", callback_data="pc_cancel"))
-    builder.add(InlineKeyboardButton(text="Процессы", callback_data="pc_processes"))
-    builder.add(InlineKeyboardButton(text="Скриншот", callback_data="pc_screenshot"))
-    builder.add(InlineKeyboardButton(text="Статус", callback_data="pc_status"))
-    builder.add(InlineKeyboardButton(text="Назад", callback_data="back_to_main"))
-    builder.adjust(2, 2, 2, 1)
+    builder.add(InlineKeyboardButton(text="📊 Статус", callback_data="pc_status"))
+    builder.add(InlineKeyboardButton(text="📸 Скриншот", callback_data="pc_screenshot"))
+    builder.add(InlineKeyboardButton(text="🔄 Перезагрузка", callback_data="pc_reboot"))
+    builder.add(InlineKeyboardButton(text="⛔ Выключение", callback_data="pc_shutdown"))
+    builder.add(InlineKeyboardButton(text="😴 Сон", callback_data="pc_sleep"))
+    builder.add(InlineKeyboardButton(text="🔋 Гибернация", callback_data="pc_hibernate"))
+    builder.add(InlineKeyboardButton(text="📋 Процессы", callback_data="pc_processes"))
+    builder.add(InlineKeyboardButton(text="🌐 Сеть", callback_data="pc_network"))
+    builder.add(InlineKeyboardButton(text="📈 Сбор данных", callback_data="pc_collect_data"))
+    builder.add(InlineKeyboardButton(text="❌ Отмена", callback_data="pc_cancel"))
+    builder.add(InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main"))
+    builder.adjust(2, 2, 2, 2, 2, 1)
     return builder.as_markup()
 
 
