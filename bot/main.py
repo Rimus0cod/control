@@ -1,14 +1,10 @@
 """Main bot entry point."""
 import asyncio
-import os
-import signal
 import sys
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from contextlib import asynccontextmanager
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -23,6 +19,7 @@ from database import DatabaseRepository
 from bot.bot_config import BotConfig
 from handlers import (
     auth_router,
+    admin_router,
     pc_router,
     wol_router,
     dota_router,
@@ -76,6 +73,7 @@ def create_bot() -> tuple[Bot, Dispatcher]:
         
         # Register routers
         _dp.include_router(auth_router)
+        _dp.include_router(admin_router)
         _dp.include_router(wol_router)
         _dp.include_router(pc_router)
         _dp.include_router(dota_router)
@@ -126,6 +124,16 @@ async def setup_commands(bot: Bot):
         BotCommand(command="notify", description="Уведомления вкл/выкл"),
         BotCommand(command="profile", description="Мой профиль (настройки ПК / Steam)"),
         BotCommand(command="setprofile", description="Заполнить / изменить профиль"),
+        BotCommand(command="login", description="Вход по паролю"),
+        BotCommand(command="2fa_setup", description="Настроить 2FA"),
+        BotCommand(command="2fa_verify", description="Подтвердить 2FA"),
+        BotCommand(command="2fa_disable", description="Отключить 2FA"),
+        BotCommand(command="2fa", description="Ввести 2FA код"),
+        BotCommand(command="recover", description="Восстановление пароля"),
+        BotCommand(command="reset_password", description="Сброс пароля по токену"),
+        BotCommand(command="admin", description="Панель администратора"),
+        BotCommand(command="users", description="Список пользователей (админ)"),
+        BotCommand(command="logs", description="Логи (админ)"),
     ]
     
     await bot.set_my_commands(commands)
@@ -156,18 +164,6 @@ async def on_shutdown(bot: Bot):
     await db.close()
     
     logger.info("Bot stopped")
-
-
-@asynccontextmanager
-async def lifespan(dp: Dispatcher, bot: Bot):
-    """Manage bot lifecycle."""
-    # Startup
-    await on_startup(bot)
-    
-    yield
-    
-    # Shutdown
-    await on_shutdown(bot)
 
 
 async def main():

@@ -1,9 +1,12 @@
 """Database repository for CRUD operations."""
-from datetime import datetime
-from typing import Optional, List
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from __future__ import annotations
+
+from datetime import datetime
+from typing import ClassVar, Optional, List
+
+from sqlalchemy import inspect, select, text
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from config import get_settings
@@ -12,28 +15,65 @@ from database.models import Base, User, AuthRequest, PCStatus, DotaMatch, LogEnt
 
 class DatabaseRepository:
     """Async database repository."""
-    
+
+    _engine_cache: ClassVar[dict[str, AsyncEngine]] = {}
+    _session_maker_cache: ClassVar[dict[str, async_sessionmaker[AsyncSession]]] = {}
+
     def __init__(self, database_url: Optional[str] = None):
         """Initialize database connection."""
         settings = get_settings()
         self.database_url = database_url or settings.database_url
-        
-        self.engine = create_async_engine(
-            self.database_url,
-            echo=settings.debug,
-            future=True,
-        )
-        
-        self.async_session_maker = async_sessionmaker(
-            self.engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-        )
+
+        if self.database_url not in self._engine_cache:
+            engine = create_async_engine(
+                self.database_url,
+                echo=settings.debug,
+                future=True,
+                pool_pre_ping=True,
+            )
+            session_maker = async_sessionmaker(
+                engine,
+                class_=AsyncSession,
+                expire_on_commit=False,
+            )
+            self._engine_cache[self.database_url] = engine
+            self._session_maker_cache[self.database_url] = session_maker
+
+        self.engine = self._engine_cache[self.database_url]
+        self.async_session_maker = self._session_maker_cache[self.database_url]
     
     async def init_db(self) -> None:
         """Initialize database tables."""
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(self._run_compat_migrations)
+
+    @staticmethod
+    def _run_compat_migrations(sync_conn) -> None:
+        """
+        Run lightweight compatibility migrations for existing SQLite databases.
+
+        This keeps old installations working after model changes without requiring
+        a full Alembic migration setup.
+        """
+        dialect = getattr(sync_conn.dialect, "name", "")
+        if dialect != "sqlite":
+            return
+
+        inspector = inspect(sync_conn)
+        tables = set(inspector.get_table_names())
+        if "users" not in tables:
+            return
+
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        if "two_factor_backup_codes" not in user_columns:
+            sync_conn.execute(text("ALTER TABLE users ADD COLUMN two_factor_backup_codes TEXT"))
+
+        # Ensure helpful indexes exist for auth-heavy queries.
+        sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_telegram_id ON users (telegram_id)"))
+        sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_is_authorized ON users (is_authorized)"))
+        sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_locked_until ON users (locked_until)"))
+        sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_log_entries_created_at ON log_entries (created_at)"))
     
     async def get_session(self):
         """Get async database session."""
@@ -92,18 +132,36 @@ class DatabaseRepository:
     
     async def update_user_password(self, user_id: int, password: str) -> bool:
         """Update user password."""
-        user = await self.get_user_by_id(user_id)
-        if not user:
-            return False
-        user.set_password(password)
-        return await self.update_user(user)
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(User).where(User.id == user_id)
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                return False
+            user.set_password(password)
+            await session.commit()
+            return True
     
     async def check_user_password(self, telegram_id: int, password: str) -> bool:
-        """Check user password."""
-        user = await self.get_user_by_telegram_id(telegram_id)
-        if not user or not user.password_hash:
-            return False
-        return user.check_password(password)
+        """Check user password and transparently migrate legacy password hashes."""
+        async with self.async_session_maker() as session:
+            result = await session.execute(
+                select(User).where(User.telegram_id == telegram_id)
+            )
+            user = result.scalar_one_or_none()
+            if not user or not user.password_hash:
+                return False
+
+            if not user.check_password(password):
+                return False
+
+            # Opportunistic migration from legacy/weak hashes to current bcrypt policy.
+            if user.needs_rehash():
+                user.set_password(password, enforce_policy=False)
+                await session.commit()
+
+            return True
     
     async def get_all_users(self) -> List[User]:
         """Get all users."""
@@ -289,9 +347,12 @@ class DatabaseRepository:
     
     async def close(self) -> None:
         """Close database connection."""
-        await self.engine.dispose()
-        
-            # UserProfile methods
+        cached_engine = self._engine_cache.pop(self.database_url, None)
+        self._session_maker_cache.pop(self.database_url, None)
+        if cached_engine:
+            await cached_engine.dispose()
+
+    # UserProfile methods
     async def get_user_profile(self, user_id: int) -> Optional[UserProfile]:
         """Get profile by internal user ID."""
         async with self.async_session_maker() as session:

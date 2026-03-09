@@ -1,5 +1,6 @@
 """Handlers package."""
 from .authorization import router as auth_router
+from .admin import router as admin_router
 from .pc_control import router as pc_router
 from .wol import router as wol_router
 from .dota import router as dota_router
@@ -9,6 +10,7 @@ from .profile import router as profile_router
 
 __all__ = [
     "auth_router",
+    "admin_router",
     "pc_router",
     "wol_router",
     "dota_router",

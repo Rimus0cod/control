@@ -1,17 +1,33 @@
-"""Authorization handlers."""
+"""Authorization and login security handlers."""
+
+from __future__ import annotations
+
+from io import BytesIO
+
 from aiogram import Router, F, Bot
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, Message, CallbackQuery
+from aiogram.types import BufferedInputFile, InlineKeyboardButton, Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.filters import IsAdmin, IsOwner
 from bot.keyboards import get_auth_keyboard, get_admin_keyboard, get_main_keyboard
 from database import DatabaseRepository
 from services import NotificationService
+from services.password_recovery import PasswordRecoveryService
+from services.two_factor import LoginSecurityService, TwoFactorService
 from utils import get_logger
 
 router = Router()
 logger = get_logger(__name__)
+
+
+def _extract_command_payload(text: str, command: str) -> str:
+    """Extract command payload text after command token."""
+    return (text or "").replace(command, "", 1).strip()
+
+
+def _normalize_2fa_code(raw: str) -> str:
+    """Normalize 2FA code by removing spaces."""
+    return (raw or "").strip().replace(" ", "")
 
 
 async def _send_profile_invite(bot: Bot, telegram_id: int) -> None:
@@ -116,13 +132,23 @@ async def cmd_help(message: Message):
             "• /setprofile — заполнить / изменить профиль\n\n"
             "<b>Настройки:</b>\n"
             "• /notify — уведомления вкл/выкл\n"
+            "\n<b>Безопасность:</b>\n"
+            "• /login &lt;пароль&gt; — вход по паролю\n"
+            "• /2fa_setup — начать настройку 2FA\n"
+            "• /2fa_verify &lt;код&gt; — включить 2FA\n"
+            "• /2fa_disable &lt;код&gt; — отключить 2FA\n"
+            "• /2fa &lt;код/backup&gt; — подтвердить 2FA при входе\n"
+            "• /recover — получить токен сброса пароля\n"
+            "• /reset_password &lt;token&gt; &lt;new_password&gt; — сбросить пароль\n"
         )
 
     if user and user.is_admin:
         help_text += (
             "\n<b>Администратор:</b>\n"
             "• /auth &lt;user_id&gt; approve|reject — управление доступом\n"
-            "• /logs — просмотр логов\n"
+            "• /admin — панель администратора\n"
+            "• /users [page] — список пользователей\n"
+            "• /logs [user_id] [page] — просмотр логов\n"
         )
     
     await message.answer(help_text, parse_mode="HTML")
@@ -385,15 +411,45 @@ async def cmd_2fa_setup(message: Message):
     
     # Get provisioning URI
     provisioning_uri = await two_factor_service.get_provisioning_uri(message.from_user.id)
-    
+    if not provisioning_uri:
+        await message.answer("❌ Failed to build 2FA provisioning URI. Try again later.")
+        return
+
+    # Try to send QR code image. Fallback to plain URI if qrcode is unavailable.
+    qr_sent = False
+    try:
+        import qrcode
+
+        qr_img = qrcode.make(provisioning_uri)
+        buf = BytesIO()
+        qr_img.save(buf, format="PNG")
+        qr_bytes = buf.getvalue()
+        qr_file = BufferedInputFile(qr_bytes, filename="2fa_qr.png")
+        await message.answer_photo(
+            photo=qr_file,
+            caption=(
+                "🔐 <b>2FA Setup</b>\n\n"
+                "1. Scan this QR with your authenticator app.\n"
+                "2. Then run: <code>/2fa_verify CODE</code>"
+            ),
+            parse_mode="HTML",
+        )
+        qr_sent = True
+    except Exception as exc:
+        logger.warning(f"Unable to render/send 2FA QR image for {message.from_user.id}: {exc}")
+
+    if not qr_sent:
+        await message.answer(
+            "🔐 <b>2FA Setup</b>\n\n"
+            "Install an authenticator app and add this URI:\n"
+            f"<code>{provisioning_uri}</code>",
+            parse_mode="HTML",
+        )
+
     await message.answer(
-        f"🔐 <b>2FA Setup</b>\n\n"
-        f"To enable Two-Factor Authentication:\n\n"
-        f"1. Install an authenticator app (Google Authenticator, Authy, etc.)\n"
-        f"2. Scan this QR code:\n\n"
-        f"<code>{provisioning_uri}</code>\n\n"
-        f"Or enter this secret manually:\n<code>{secret}</code>\n\n"
-        f"After setting up, send /2fa_verify CODE to verify and enable 2FA."
+        f"Manual secret (if QR scan unavailable):\n<code>{secret}</code>\n\n"
+        "After setup, verify with: <code>/2fa_verify 123456</code>",
+        parse_mode="HTML",
     )
 
 
@@ -415,33 +471,43 @@ async def cmd_2fa_verify(message: Message):
         await message.answer("ℹ️ 2FA is already enabled.")
         return
     
-    # Get verification code from message
-    code = message.text.replace("/2fa_verify", "").strip()
-    
-    if not code or len(code) < 6:
-        await message.answer(
-            "❌ Please provide the verification code.\n"
-            "Usage: /2fa_verify CODE\n\n"
-            "Example: /2fa_verify 123456"
-        )
+    code = _normalize_2fa_code(_extract_command_payload(message.text, "/2fa_verify"))
+    valid_format, reason = TwoFactorService.validate_code_format(code)
+    if not valid_format:
+        await message.answer(f"❌ {reason}\nUsage: /2fa_verify 123456")
         return
-    
-    # Verify and enable
+
     two_factor_service = TwoFactorService()
     success = await two_factor_service.enable_2fa(message.from_user.id, code)
-    
-    if success:
-        await message.answer("✅ 2FA enabled successfully!")
+    if not success:
+        await message.answer(f"❌ {two_factor_service.last_error or 'Failed to enable 2FA.'}")
         await db.add_log_entry(
-            action="2fa_enabled",
+            action="2fa_enable_failed",
             user_id=user.id,
-            details="Two-factor authentication enabled",
+            details=f"reason={two_factor_service.last_error}",
+        )
+        return
+
+    backup_codes = await two_factor_service.generate_backup_codes(message.from_user.id)
+    if backup_codes:
+        backup_codes_text = "\n".join(f"• <code>{code}</code>" for code in backup_codes)
+        await message.answer(
+            "✅ 2FA enabled successfully!\n\n"
+            "Save these one-time backup codes in a safe place.\n"
+            "Each code can be used once if you lose access to the authenticator app:\n\n"
+            f"{backup_codes_text}",
+            parse_mode="HTML",
         )
     else:
         await message.answer(
-            "❌ Invalid verification code.\n"
-            "Please check your authenticator app and try again."
+            "✅ 2FA enabled successfully, but backup code generation failed.\n"
+            "You can proceed with authenticator codes only."
         )
+    await db.add_log_entry(
+        action="2fa_enabled",
+        user_id=user.id,
+        details="Two-factor authentication enabled",
+    )
 
 
 @router.message(Command("2fa_disable"))
@@ -462,21 +528,15 @@ async def cmd_2fa_disable(message: Message):
         await message.answer("ℹ️ 2FA is not enabled for your account.")
         return
     
-    # Get verification code from message
-    code = message.text.replace("/2fa_disable", "").strip()
-    
-    if not code or len(code) < 6:
-        await message.answer(
-            "❌ Please provide the verification code to disable 2FA.\n"
-            "Usage: /2fa_disable CODE\n\n"
-            "Example: /2fa_disable 123456"
-        )
+    code = _normalize_2fa_code(_extract_command_payload(message.text, "/2fa_disable"))
+    valid_format, reason = TwoFactorService.validate_code_format(code)
+    if not valid_format:
+        await message.answer(f"❌ {reason}\nUsage: /2fa_disable 123456")
         return
-    
-    # Verify and disable
+
     two_factor_service = TwoFactorService()
     success = await two_factor_service.disable_2fa(message.from_user.id, code)
-    
+
     if success:
         await message.answer("✅ 2FA disabled successfully!")
         await db.add_log_entry(
@@ -485,10 +545,7 @@ async def cmd_2fa_disable(message: Message):
             details="Two-factor authentication disabled",
         )
     else:
-        await message.answer(
-            "❌ Invalid verification code.\n"
-            "Please check your authenticator app and try again."
-        )
+        await message.answer(f"❌ {two_factor_service.last_error or 'Failed to disable 2FA.'}")
 
 
 # ──────────────────────────────────────────────
@@ -518,7 +575,7 @@ async def cmd_login(message: Message):
         return
     
     # Get password from message
-    password = message.text.replace("/login", "").strip()
+    password = _extract_command_payload(message.text, "/login")
     
     if not password:
         await message.answer(
@@ -530,35 +587,42 @@ async def cmd_login(message: Message):
     
     # Verify password
     if await db.check_user_password(message.from_user.id, password):
-        # Reset failed attempts
-        await login_security.record_successful_login(message.from_user.id)
-        
-        # If 2FA is enabled, ask for 2FA code
+        # If 2FA is enabled, require second factor before login success.
         two_factor_service = TwoFactorService()
         if await two_factor_service.is_2fa_enabled(message.from_user.id):
-            await message.answer(
-                "✅ Password verified!\n"
-                "Now please enter your 2FA code:\n"
-                "/2fa CODE"
-            )
-        else:
-            # Authorize user
-            user.is_authorized = True
-            await db.update_user(user)
+            login_security.set_pending_2fa(message.from_user.id)
             await db.add_log_entry(
-                action="login_success",
+                action="login_password_verified",
                 user_id=user.id,
-                details="User logged in with password",
+                details="Password verified, waiting for 2FA confirmation",
             )
-            await message.answer("✅ Login successful! You now have access to all commands.")
+            await message.answer(
+                "✅ Password verified.\n"
+                "Enter your 2FA code now:\n"
+                "<code>/2fa 123456</code>",
+                parse_mode="HTML",
+            )
+            return
+
+        await login_security.record_successful_login(message.from_user.id)
+        user.is_authorized = True
+        await db.update_user(user)
+        await db.add_log_entry(
+            action="login_success",
+            user_id=user.id,
+            details="User logged in with password",
+        )
+        await message.answer("✅ Login successful! You now have access to all commands.")
     else:
         # Record failed attempt
         await login_security.record_failed_attempt(message.from_user.id)
-        
-        # Check remaining attempts
-        user = await db.get_user_by_telegram_id(message.from_user.id)
-        remaining = 5 - user.failed_login_attempts
-        
+
+        remaining = await login_security.remaining_attempts(message.from_user.id)
+        await db.add_log_entry(
+            action="login_failed",
+            user_id=user.id,
+            details=f"remaining_attempts={remaining}",
+        )
         await message.answer(
             f"❌ Invalid password.\n"
             f"Attempts remaining: {remaining}"
@@ -572,8 +636,6 @@ async def cmd_login(message: Message):
 @router.message(Command("recover"))
 async def cmd_recover(message: Message):
     """Handle /recover command - start password recovery."""
-    from services.password_recovery import PasswordRecoveryService
-    
     db = DatabaseRepository()
     user = await db.get_user_by_telegram_id(message.from_user.id)
     
@@ -582,7 +644,7 @@ async def cmd_recover(message: Message):
         return
     
     recovery_service = PasswordRecoveryService()
-    
+
     # Check if already has valid token
     if await recovery_service.is_token_valid(message.from_user.id):
         await message.answer(
@@ -591,29 +653,37 @@ async def cmd_recover(message: Message):
             "Or wait for the current token to expire."
         )
         return
-    
+
     # Generate new token
     token = await recovery_service.generate_recovery_token(message.from_user.id)
-    
+
     if token:
         await message.answer(
             f"🔑 <b>Password Recovery</b>\n\n"
             f"Your recovery token has been generated.\n\n"
             f"<code>{token}</code>\n\n"
-            f"Use this token within 24 hours to reset your password:\n"
+            f"Use this token within 1 hour to reset your password:\n"
             f"<code>/reset_password {token} NEW_PASSWORD</code>\n\n"
             f"Example:\n"
             f"<code>/reset_password {token} MyNewPassword123</code>"
         )
+        await db.add_log_entry(
+            action="recovery_token_generated",
+            user_id=user.id,
+            details="Password recovery token issued",
+        )
     else:
-        await message.answer("❌ Failed to generate recovery token.")
+        await message.answer(f"❌ {recovery_service.last_error or 'Failed to generate recovery token.'}")
+        await db.add_log_entry(
+            action="recovery_token_failed",
+            user_id=user.id,
+            details=str(recovery_service.last_error),
+        )
 
 
 @router.message(Command("reset_password"))
 async def cmd_reset_password(message: Message):
     """Handle /reset_password command - reset password with token."""
-    from services.password_recovery import PasswordRecoveryService
-    
     db = DatabaseRepository()
     user = await db.get_user_by_telegram_id(message.from_user.id)
     
@@ -622,7 +692,7 @@ async def cmd_reset_password(message: Message):
         return
     
     # Parse command
-    parts = message.text.replace("/reset_password", "").strip().split()
+    parts = _extract_command_payload(message.text, "/reset_password").split(maxsplit=1)
     
     if len(parts) < 2:
         await message.answer(
@@ -632,27 +702,30 @@ async def cmd_reset_password(message: Message):
         )
         return
     
-    token = parts[0]
-    new_password = parts[1]
-    
-    if len(new_password) < 8:
-        await message.answer(
-            "❌ Password must be at least 8 characters."
-        )
-        return
+    token, new_password = parts
     
     recovery_service = PasswordRecoveryService()
-    
+
     if await recovery_service.reset_password(message.from_user.id, token, new_password):
         await message.answer(
             "✅ Password has been reset successfully!\n\n"
             "You can now login with your new password:\n"
             "/login YOUR_PASSWORD"
         )
+        await db.add_log_entry(
+            action="password_reset_success",
+            user_id=user.id,
+            details="Password reset via recovery token",
+        )
     else:
         await message.answer(
-            "❌ Invalid or expired token.\n"
+            f"❌ {recovery_service.last_error or 'Invalid or expired token.'}\n"
             "Use /recover to generate a new recovery token."
+        )
+        await db.add_log_entry(
+            action="password_reset_failed",
+            user_id=user.id,
+            details=str(recovery_service.last_error),
         )
 
 
@@ -666,32 +739,33 @@ async def cmd_2fa_verify_short(message: Message):
         await message.answer("❌ User not found. Use /start first.")
         return
     
-    if not user.is_authorized:
-        await message.answer("❌ You need to be authorized first.")
-        return
-    
     if not user.is_2fa_enabled:
         await message.answer("ℹ️ 2FA is not enabled for your account.")
         return
-    
-    # Get code from message
-    code = message.text.replace("/2fa", "").strip()
-    
-    if not code or len(code) < 6:
+
+    login_security = LoginSecurityService()
+    # Allow /2fa if user is already authorized OR recently passed password check.
+    if not user.is_authorized and not login_security.has_pending_2fa(message.from_user.id):
         await message.answer(
-            "❌ Please provide the 2FA code.\n"
-            "Usage: /2fa CODE\n\n"
-            "Example: /2fa 123456"
+            "❌ 2FA verification is not pending.\n"
+            "Please login with password first: /login YOUR_PASSWORD"
         )
         return
-    
-    # Verify code
+
+    code = _normalize_2fa_code(_extract_command_payload(message.text, "/2fa"))
+
+    # Allow backup codes (alphanumeric) in addition to 6-digit TOTP.
+    code_format_ok, reason = TwoFactorService.validate_code_format(code)
+    looks_like_backup = code.isalnum() and len(code) >= 8
+    if not code_format_ok and not looks_like_backup:
+        await message.answer(f"❌ {reason}\nUsage: /2fa 123456")
+        return
+
     two_factor_service = TwoFactorService()
     if await two_factor_service.verify_code(message.from_user.id, code):
-        # Authorize user
         user.is_authorized = True
         await db.update_user(user)
-        
+        await login_security.record_successful_login(message.from_user.id)
         await db.add_log_entry(
             action="2fa_login_success",
             user_id=user.id,
@@ -699,7 +773,13 @@ async def cmd_2fa_verify_short(message: Message):
         )
         await message.answer("✅ 2FA verified! Login successful!")
     else:
+        await login_security.record_failed_attempt(message.from_user.id)
+        await db.add_log_entry(
+            action="2fa_login_failed",
+            user_id=user.id,
+            details=str(two_factor_service.last_error),
+        )
         await message.answer(
-            "❌ Invalid 2FA code.\n"
+            f"❌ {two_factor_service.last_error or 'Invalid 2FA code.'}\n"
             "Please check your authenticator app and try again."
         )
