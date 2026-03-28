@@ -1,5 +1,5 @@
 """Custom filters for aiogram."""
-from typing import Any, Callable, Union
+from typing import Union
 
 from aiogram.filters import Filter
 from aiogram.types import Message, CallbackQuery

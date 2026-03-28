@@ -66,3 +66,41 @@
 2026-02-27 08:54:04 | INFO     | services.dota_monitor:_ensure_hero_cache:167 - Hero cache loaded: 127 heroes.
 2026-02-27 08:54:17 | INFO     | __main__:on_shutdown:143 - Bot shutting down...
 2026-02-27 08:54:17 | INFO     | __main__:on_shutdown:149 - Bot stopped
+2026-03-09 17:29:42 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-03-09 17:29:42 | INFO     | __main__:create_bot:51 - Starting Telegram PC Controller Bot...
+2026-03-09 17:29:42 | INFO     | __main__:create_bot:83 - Bot configured successfully
+2026-03-09 17:29:42 | INFO     | __main__:on_startup:145 - Bot starting up...
+2026-03-09 17:29:54 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-03-09 17:29:54 | INFO     | __main__:create_bot:51 - Starting Telegram PC Controller Bot...
+2026-03-09 17:29:54 | INFO     | __main__:create_bot:83 - Bot configured successfully
+2026-03-09 17:29:54 | INFO     | __main__:on_startup:145 - Bot starting up...
+2026-03-09 17:29:54 | INFO     | __main__:on_startup:150 - Database initialized
+2026-03-09 17:29:54 | INFO     | __main__:setup_commands:140 - Bot commands configured
+2026-03-09 17:29:54 | INFO     | __main__:on_startup:155 - Bot is ready!
+2026-03-09 17:30:08 | INFO     | handlers.authorization:cmd_start:98 - User 1094318782 started the bot
+2026-03-09 17:30:17 | INFO     | handlers.authorization:cmd_start:98 - User 1094318782 started the bot
+2026-03-09 17:30:19 | INFO     | services.dota_monitor:_ensure_hero_cache:167 - Hero cache loaded: 127 heroes.
+2026-03-09 17:30:23 | INFO     | services.dota_monitor:_ensure_hero_cache:167 - Hero cache loaded: 127 heroes.
+2026-03-09 17:30:45 | INFO     | services.dota_monitor:_ensure_hero_cache:167 - Hero cache loaded: 127 heroes.
+2026-03-28 12:33:25 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-03-28 12:33:25 | INFO     | __main__:create_bot:51 - Starting Telegram PC Controller Bot...
+2026-03-28 12:33:25 | INFO     | __main__:create_bot:83 - Bot configured successfully
+2026-03-28 12:33:25 | INFO     | __main__:on_startup:145 - Bot starting up...
+2026-03-28 12:33:37 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-03-28 12:33:37 | INFO     | __main__:create_bot:51 - Starting Telegram PC Controller Bot...
+2026-03-28 12:33:37 | INFO     | __main__:create_bot:83 - Bot configured successfully
+2026-03-28 12:33:37 | INFO     | __main__:on_startup:145 - Bot starting up...
+2026-03-28 12:33:37 | INFO     | __main__:on_startup:150 - Database initialized
+2026-03-28 12:34:26 | INFO     | utils.logger:setup_logging:58 - Logging initialized
+2026-03-28 12:34:26 | INFO     | __main__:create_bot:51 - Starting Telegram PC Controller Bot...
+2026-03-28 12:34:26 | INFO     | __main__:create_bot:83 - Bot configured successfully
+2026-03-28 12:34:26 | INFO     | __main__:on_startup:145 - Bot starting up...
+2026-03-28 12:34:26 | INFO     | __main__:on_startup:150 - Database initialized
+2026-03-28 12:34:31 | INFO     | __main__:setup_commands:140 - Bot commands configured
+2026-03-28 12:34:31 | INFO     | __main__:on_startup:155 - Bot is ready!
+2026-03-28 12:34:37 | INFO     | handlers.authorization:cmd_start:98 - User 1094318782 started the bot
+2026-03-28 12:35:34 | INFO     | services.dota_monitor:_ensure_hero_cache:167 - Hero cache loaded: 127 heroes.
+2026-03-28 12:35:41 | INFO     | services.dota_monitor:_ensure_hero_cache:167 - Hero cache loaded: 127 heroes.
+2026-03-28 12:35:43 | INFO     | services.dota_monitor:_ensure_hero_cache:167 - Hero cache loaded: 127 heroes.
+2026-03-28 12:35:58 | INFO     | __main__:on_shutdown:160 - Bot shutting down...
+2026-03-28 12:35:58 | INFO     | __main__:on_shutdown:166 - Bot stopped

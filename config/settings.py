@@ -24,19 +24,67 @@ class Settings(BaseSettings):
     # Bot Configuration
     bot_token: str = Field(default="", alias="BOT_TOKEN")
     admin_ids: List[int] = Field(default=[], alias="ADMIN_IDS")
+
+    @field_validator("bot_token", mode="after")
+    @classmethod
+    def validate_bot_token(cls, v: str) -> str:
+        """Validate BOT_TOKEN format."""
+        token = (v or "").strip()
+        if not token:
+            return ""
+        if ":" not in token:
+            raise ValueError("BOT_TOKEN format is invalid (missing ':').")
+        return token
     
     @field_validator("admin_ids", mode="before")
     @classmethod
     def parse_admin_ids(cls, v: Union[str, int, List[int]]) -> List[int]:
         """Parse admin IDs from various formats."""
         if isinstance(v, list):
-            return v
+            result: List[int] = []
+            for item in v:
+                try:
+                    value = int(item)
+                except (TypeError, ValueError):
+                    continue
+                if value > 0:
+                    result.append(value)
+            return result
         if isinstance(v, int):
-            return [v]
+            return [v] if v > 0 else []
         if isinstance(v, str):
             # Handle comma-separated string
-            return [int(x.strip()) for x in v.split(",") if x.strip()]
+            result: List[int] = []
+            for raw in v.split(","):
+                item = raw.strip()
+                if not item:
+                    continue
+                try:
+                    value = int(item)
+                except ValueError:
+                    continue
+                if value > 0:
+                    result.append(value)
+            return result
         return []
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_flag(cls, v: Union[str, bool, int, None]) -> bool:
+        """Accept common boolean aliases for DEBUG to avoid brittle startup failures."""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, int):
+            return bool(v)
+        if v is None:
+            return False
+        if isinstance(v, str):
+            normalized = v.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug", "dev"}:
+                return True
+            if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
+                return False
+        raise ValueError("DEBUG must be a boolean-compatible value.")
     
     # Database
     database_url: str = Field(

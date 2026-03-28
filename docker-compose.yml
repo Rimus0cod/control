@@ -1,0 +1,10 @@
+services:
+  bot:
+    build: .
+    container_name: telegram-pc-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./bot.db:/app/bot.db
+      - ./bot.log:/app/bot.log

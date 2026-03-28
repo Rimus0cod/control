@@ -1,5 +1,5 @@
 """Database package."""
-from .models import Base, User, AuthRequest, PCStatus, DotaMatch, LogEntry
+from .models import Base, User, AuthRequest, PCStatus, DotaMatch, LogEntry, UserProfile
 from .repository import DatabaseRepository
 
 __all__ = [
@@ -9,5 +9,6 @@ __all__ = [
     "PCStatus",
     "DotaMatch",
     "LogEntry",
+    "UserProfile",
     "DatabaseRepository",
 ]

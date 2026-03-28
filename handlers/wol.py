@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 
 from bot.filters import IsAuthorized
-from bot.keyboards import get_main_keyboard, get_confirm_keyboard
+from bot.keyboards import get_main_keyboard
 from database import DatabaseRepository
 from services import WakeOnLanService, NotificationService
 from utils import get_logger
@@ -97,68 +97,6 @@ async def callback_pc_wake(callback: CallbackQuery, bot: Bot):
         "🔌 Use /wake command to power on the PC.",
     )
     await callback.answer()
-
-
-@router.message(Command("status"))
-async def cmd_status(message: Message, bot: Bot):
-    """Handle /status command."""
-    db = DatabaseRepository()
-    
-    # Check authorization
-    user = await db.get_user_by_telegram_id(message.from_user.id)
-    
-    if not user or not user.is_authorized:
-        await message.answer(
-            "❌ You are not authorized to use this command.",
-            reply_markup=get_main_keyboard(is_authorized=False)
-        )
-        return
-    
-    await message.answer("📊 Checking PC status...")
-    
-    try:
-        from services import PCManager
-        
-        pc_manager = PCManager()
-        is_online = await pc_manager.check_online()
-        
-        # Update database
-        status = await db.update_pc_status(
-            is_online=is_online,
-            ip_address=bot.config.pc_ip_address,
-        )
-        
-        status_text = "🟢 <b>ONLINE</b>" if is_online else "🔴 <b>OFFLINE</b>"
-        
-        response = (
-            f"<b>PC Status</b>\n\n"
-            f"Status: {status_text}\n"
-            f"IP: {bot.config.pc_ip_address}\n"
-            f"MAC: {bot.config.pc_mac_address}\n"
-        )
-        
-        if status.last_check:
-            response += f"Last check: {status.last_check.strftime('%Y-%m-%d %H:%M:%S')}"
-        
-        if status.last_wake_attempt:
-            response += f"\nLast wake: {status.last_wake_attempt.strftime('%Y-%m-%d %H:%M:%S')}"
-        
-        await message.answer(
-            response,
-            reply_markup=get_main_keyboard(is_authorized=True, is_admin=user.is_admin)
-        )
-        
-        # Log action
-        await db.add_log_entry(
-            action="status_check",
-            user_id=user.id,
-            details=f"PC is {'online' if is_online else 'offline'}",
-        )
-        
-    except Exception as e:
-        logger.error(f"Status check error: {e}")
-        await message.answer(f"❌ Error: {str(e)}")
-
 
 @router.callback_query(F.data == "pc_status", IsAuthorized())
 async def callback_pc_status(callback: CallbackQuery, bot: Bot):
