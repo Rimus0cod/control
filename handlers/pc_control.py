@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from html import escape
 import platform
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
@@ -184,7 +185,8 @@ async def cmd_command(message: Message, bot: Bot) -> None:
             safe = SAFE_CMDS_LINUX
         await message.answer(
             f"Использование: /cmd &lt;команда&gt;\n\n"
-            f"Доступно без прав: {', '.join(safe)}",
+            f"Доступно без прав: {', '.join(safe)}\n"
+            "Shell-операторы вроде |, >, && и $(...) отключены.",
             parse_mode="HTML",
         )
         return
@@ -206,7 +208,7 @@ async def cmd_command(message: Message, bot: Bot) -> None:
     icon = "✅" if result.get("success") else "❌"
 
     await message.answer(
-        f"{icon} <pre>{output[:4000]}</pre>",
+        f"{icon} <pre>{escape(output[:4000])}</pre>",
         parse_mode="HTML",
     )
     await db.add_log_entry(

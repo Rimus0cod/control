@@ -67,6 +67,24 @@ class Settings(BaseSettings):
                     result.append(value)
             return result
         return []
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_flag(cls, v: Union[str, bool, int, None]) -> bool:
+        """Accept common boolean aliases for DEBUG to avoid brittle startup failures."""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, int):
+            return bool(v)
+        if v is None:
+            return False
+        if isinstance(v, str):
+            normalized = v.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug", "dev"}:
+                return True
+            if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
+                return False
+        raise ValueError("DEBUG must be a boolean-compatible value.")
     
     # Database
     database_url: str = Field(

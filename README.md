@@ -35,6 +35,9 @@
 
 - Python 3.10+
 - Telegram Bot Token
+- Системные зависимости:
+  - Для скриншотов (Linux): `scrot` или альтернатива (`gnome-screenshot`, `spectacle`, `import` из ImageMagick)
+  - Для голосового ввода (Whisper): `ffmpeg`
 
 ## 🛠 Установка
 
@@ -51,10 +54,22 @@ cd control
 ```powershell
 pip install -r requirements.txt
 ```
+Дополнительно установите ffmpeg для голосового ввода (опционально).
 
 **Linux:**
 ```bash
 pip install -r requirements.txt
+```
+Дополнительно установите системные зависимости:
+```bash
+# Для Ubuntu/Debian
+sudo apt install ffmpeg scrot
+
+# Для Arch Linux
+sudo pacman -S ffmpeg scrot
+
+# Для Fedora
+sudo dnf install ffmpeg scrot
 ```
 
 ### 3. Настройка переменных окружения
@@ -97,15 +112,12 @@ python bot/main.py
 ```bash
 python bot/main.py
 ```
-
 или
-
 ```bash
 python3 bot/main.py
 ```
 
 ### Инициализация БД вручную
-
 ```bash
 python scripts/init_db.py
 ```
@@ -276,6 +288,19 @@ sudo apt install scrot
 
 # Или ImageMagick
 sudo apt install imagemagick
+```
+
+### Голосовой ввод не работает
+Убедитесь, что установлен ffmpeg:
+```bash
+# Ubuntu/Debian
+sudo apt install ffmpeg
+
+# Arch Linux
+sudo pacman -S ffmpeg
+
+# Fedora
+sudo dnf install ffmpeg
 ```
 
 ### Команды выключения не работают

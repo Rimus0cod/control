@@ -3,9 +3,9 @@
 import asyncio
 import os
 import platform
+import shlex
 import socket
 import tempfile
-import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -373,12 +373,37 @@ class PCManager:
         allowed_commands: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
-        Execute a shell command and return stdout/stderr.
+        Execute a command and return stdout/stderr.
+
+        Shell features are intentionally disabled so that command allowlists
+        cannot be bypassed via substitutions, pipes, or redirections.
         """
-        # Determine safe commands based on OS
+        if not command or not command.strip():
+            return {
+                "success": False,
+                "output": "",
+                "error": "Command is empty.",
+            }
+
+        try:
+            tokens = shlex.split(command, posix=not self._is_windows())
+        except ValueError as exc:
+            return {
+                "success": False,
+                "output": "",
+                "error": f"Invalid command syntax: {exc}",
+            }
+
+        if not tokens:
+            return {
+                "success": False,
+                "output": "",
+                "error": "Command is empty.",
+            }
+
         if allowed_commands is not None:
             safe_commands = self.SAFE_COMMANDS_WINDOWS if self._is_windows() else self.SAFE_COMMANDS_LINUX
-            base = command.strip().split()[0] if command.strip() else ""
+            base = tokens[0]
             if base not in safe_commands and base not in (allowed_commands or []):
                 return {
                     "success": False,
@@ -387,24 +412,30 @@ class PCManager:
                 }
 
         try:
-            # Windows uses cmd.exe, Linux uses sh
-            shell = True
-            proc = await asyncio.create_subprocess_shell(
-                command,
+            proc = await asyncio.create_subprocess_exec(
+                *tokens,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
             output = stdout.decode("utf-8", errors="replace").strip()
             error = stderr.decode("utf-8", errors="replace").strip()
-            logger.info(f"Command executed: {command!r} → rc={proc.returncode}")
+            logger.info(f"Command executed: {tokens!r} → rc={proc.returncode}")
             return {
                 "success": proc.returncode == 0,
                 "output": output,
                 "error": error,
             }
         except asyncio.TimeoutError:
+            proc.kill()
+            await proc.communicate()
             return {"success": False, "output": "", "error": "Command timed out (30s)"}
+        except FileNotFoundError:
+            return {
+                "success": False,
+                "output": "",
+                "error": f"Command '{tokens[0]}' was not found.",
+            }
         except Exception as exc:
             return {"success": False, "output": "", "error": str(exc)}
 

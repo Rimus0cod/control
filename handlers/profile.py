@@ -323,7 +323,8 @@ async def step_username(message: Message, state: FSMContext) -> None:
     await state.set_state(ProfileSetup.password)
     await message.answer(
         "<b>Шаг 5 из 8</b>\n\nВведите <b>пароль</b> пользователя на ПК.\n"
-        "Пароль хранится в зашифрованной БД и видим только вам.",
+        "Пароль скрывается в интерфейсе бота и хранится локально в БД бота.\n"
+        "Вводите его только если это действительно нужно.",
         parse_mode="HTML",
         reply_markup=_skip_kb(),
     )
